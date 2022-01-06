@@ -1,0 +1,21 @@
+---
+title: 'Usage of GPU for numerical optimization through the Artificial Bee Colony algorithm'
+author:
+  - name: Samuel Oreste Abreu
+    affiliation: Politecnico di Torino
+    location: Torino, Italia
+    email: s281568@studenti.polito.it
+keywords:
+  - GPU
+  - ABC
+  - Numerical Optimization
+numbersections: yes
+lang: en
+babel-lang: english
+abstract: |
+  This is the abstract.
+
+  It consists of two paragraphs.
+
+...
+

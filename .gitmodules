@@ -1,0 +1,3 @@
+[submodule "report/ieee-paper-template"]
+	path = report/ieee-paper-template
+	url = https://github.com/richter43/ieee-pandoc-template
