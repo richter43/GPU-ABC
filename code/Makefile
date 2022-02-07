@@ -5,7 +5,7 @@ INCLUDES := -I ${CUDA_PATH}/samples/common/inc
 
 #Files and objects 
 DEST_FOLDER := ./bin
-ANCILLARY_OBJS := benchfuns.o
+ANCILLARY_OBJS := benchfuns.o utils.o
 TEST_OBJS := ${ANCILLARY_OBJS} unittest.o
 
 all: gpu
