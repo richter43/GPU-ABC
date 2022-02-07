@@ -5,15 +5,19 @@ INCLUDES := -I ${CUDA_PATH}/samples/common/inc
 
 #Files and objects 
 DEST_FOLDER := ./bin
-ANCILLARY_OBJS := benchfuns.o utils.o
+ANCILLARY_OBJS := benchfuns.o utils.o abc.o
 TEST_OBJS := ${ANCILLARY_OBJS} unittest.o
+MAIN_OBJS := ${ANCILLARY_OBJS} main.o
 
 all: gpu
 
-object:
+gpu: ${MAIN_OBJS} | folder
+	${NVCC} ${INCLUDES} $^ -o ${DEST_FOLDER}/$@ -g
+
+folder:
 	mkdir -p ${DEST_FOLDER}
 
-unit_test: ${TEST_OBJS} | object	
+unit_test: ${TEST_OBJS} | folder
 	${NVCC} ${INCLUDES} $^ -o ${DEST_FOLDER}/$@ -g
 
 clean:

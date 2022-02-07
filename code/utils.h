@@ -1,9 +1,10 @@
-#ifndef _H_UTILS_
-#define _H_UTILS_
+#ifndef _H_UTILS
+#define _H_UTILS
 
 #include <curand_kernel.h>
 
 //Host functions
+extern void *malloc_errorhandler(size_t size);
 extern float *create_sol_array(int rows, int cols);
 extern curandState *create_random_state(int blocks, int threads, int seed); 
 
