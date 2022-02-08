@@ -40,11 +40,11 @@ __device__ float sum_fitness_naive(float *fitness_array, int size, int id){
 	for(int idx_div = 1; idx_div < size; idx_div *= 2){
 		if(id % (2*idx_div) == 0 && id + idx_div < size){
 			//Destructive sum
-			fitness_array[id] += fitness_array[id+idx_div];
+			tmp_fitness[id] += tmp_fitness[id+idx_div];
 		}
 	}
 
-	return;
+	return tmp_fitness[0];
 }
 
 __global__ void abc_algo(abc_info_t container){

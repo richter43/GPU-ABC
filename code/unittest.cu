@@ -6,6 +6,7 @@
 
 #include "benchfuns.h"
 #include "utils.h"
+#include "abc.h"
 
 #define FLOAT_VAL 1.1 
 #define THREADS 32
@@ -13,23 +14,28 @@
 #define MIN_FLOAT -3.0
 #define MAX_FLOAT 3.0
 #define SEED 0
+//Sum array constant
+#define MAX_ARRAY 8
 
 void h_rastrigin1d_test(float x);
 void h_rastriginnd_test(void);
 void h_curand_test(void);
 void h_random_float_array(int dim);
+void h_sum_array_float(void);
 
 __global__ void rastrigin(float *ret, float x);
 __global__ void d_rastriginnd_test(float *ret, float *x, int n);
 __global__ void d_get_random_float(curandState *state);
 __global__ void d_random_float_array(curandState *state, float *ret, int dim);
+__global__ void d_sum_array_float(float *float_array, int dim);
 
 int main(void){
 	
 	//h_rastrigin1d_test(FLOAT_VAL);
 	//h_rastriginnd_test();
 	//h_curand_test();
-	h_random_float_array(6);
+	//h_random_float_array(6);
+	h_sum_array_float();
 	return EXIT_SUCCESS;
 }
 
@@ -122,6 +128,38 @@ void h_random_float_array(int dim){
 	free(h_ret);
 	cudaFree(state);
 	cudaFree(d_ret);
+	return;
+}
+
+void h_sum_array_float(void){
+
+	float float_array[MAX_ARRAY];
+	float counter = 0.0;
+
+	for(int i = 0; i < MAX_ARRAY; i++){
+		float_array[i] = counter;
+		counter += 1.0;
+	}
+
+	float *d_float_array;
+	checkCudaErrors(cudaMalloc(&d_float_array, sizeof(float)*MAX_ARRAY));
+	checkCudaErrors(cudaMemcpy(d_float_array, float_array, sizeof(float)*MAX_ARRAY, cudaMemcpyHostToDevice));
+
+	d_sum_array_float<<<1, MAX_ARRAY>>>(d_float_array, MAX_ARRAY);
+
+	cudaFree(d_float_array);
+	return;
+}
+
+__global__ void d_sum_array_float(float *float_array, int dim){
+
+	int id = threadIdx.x + blockIdx.x * blockDim.x;
+
+	float res = sum_fitness_naive(float_array, dim, id);
+	if(id == 0){
+		printf("Sum of the array is equal to: %f\n", res);
+	}
+	
 	return;
 }
 

@@ -21,7 +21,7 @@ typedef struct abc_info_s{
 extern __device__ void scout_bee(curandState *state, float *sol, int dim, float min, float max);
 extern __device__ void initialize_sol_array(curandState *state, float *sol, int sol_dim, float min, float max);
 extern __device__ void print_float_sol(float *array, int size);
-
+extern __device__ float sum_fitness_naive(float *fitness_array, int size, int id);
 //Global kernels
 extern __global__ void abc_algo(abc_info_t container);
 
