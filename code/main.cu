@@ -37,7 +37,10 @@ int main(void){
 	checkCudaErrors(cudaMalloc(&d_fitness, sizeof(float)*BLOCKS*THREADS));
 	checkCudaErrors(cudaMalloc(&d_best_sol_fitness, sizeof(float)*(DIM+1)));
 
-	abc_algo<<<BLOCKS,THREADS>>>(d_state, d_solutions, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT);
+	//Struct that contains all the relevant addresses and information
+	abc_info_t container = { d_state, d_solutions, d_best_sol_fitness, d_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT };
+	//Kernel execution
+	abc_algo<<<BLOCKS,THREADS>>>(container);
 	
 	checkCudaErrors(cudaMemcpy(h_best_sol_fitness, d_best_sol_fitness, sizeof(float)*(DIM+1), cudaMemcpyDeviceToHost));
 
