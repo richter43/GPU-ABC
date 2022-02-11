@@ -18,7 +18,7 @@
 #define MIN_FLOAT -3.0
 #define MAX_FLOAT 3.0
 #define DIM 2
-#define MAX_ITERATIONS 128
+#define MAX_ITERATIONS 1
 //Each thread behaves like a bee
 
 //Bee state array
