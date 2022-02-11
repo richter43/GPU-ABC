@@ -25,6 +25,7 @@ typedef struct abc_info_s{
         float min;
         float max;
 	int num_iterations;
+	int max_patience;
 }abc_info_t;
 
 //Device kernels

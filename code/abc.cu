@@ -145,9 +145,14 @@ __device__ bool optim_maximizer(float left, float right){
 	return false;
 }
 
-__device__ void best_fitness_naive(float *fitness_array, int size, int id, int *best_id, float *best_fitness){
+__device__ bool best_fitness_naive(float *fitness_array, int size, int id, int *best_id, float *best_fitness){
 	__shared__ int tmp_best_index[STATIC_SHARED];
 	__shared__ float tmp_fitness[STATIC_SHARED];
+	__shared__ bool tmp_return;
+
+	if(id == 0){
+		tmp_return = false;
+	}
 
 	tmp_best_index[id] = id;
 	tmp_fitness[id] = fitness_array[id];
@@ -162,11 +167,12 @@ __device__ void best_fitness_naive(float *fitness_array, int size, int id, int *
 		}
 	}
 
-	if(id == 0){
+	if(id == 0 && optim_maximizer(*best_fitness, tmp_fitness[0])){
 		*best_id = tmp_best_index[0];
 		*best_fitness = tmp_fitness[0];
+		tmp_return = true;
 	}
-	return;
+	return tmp_return;
 }
 
 //Diff pdf -> add all pdfs until > random value then that's the idx :)
@@ -210,7 +216,7 @@ __device__ void compute_fitness(float *result, float *input, int dim){
 	return;
 }
 
-__device__ void employed_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness){
+__device__ void employed_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, int *patience, int max_patience){
 	//Selecting a random employed_bee
 	int employed_bee_idx = select_random_employed_bee(state, bee_status_array, num_employed_bees);
 	float *selected_employed_sol = find_employed_bee_sol(sol, bee_status_array, dim, employed_bee_idx, id);
@@ -227,11 +233,18 @@ __device__ void employed_bee_handler(curandState *state, float *sol, bee_status_
 		}
 		*fitness = mutant_fitness;
 	}
+	else if(*patience > max_patience){
+                bee_status_array[id] = scout;
+                *patience = 0;
+        }      
+        else{
+                *patience += 1;
+        }
 	//Requires a patience counter
 
 }
 
-__device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, float *fitness_pdf){
+__device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, float *fitness_pdf, int *patience, int max_patience){
 	
 	//Selecting an employed bee according to its fitness
 	int employed_bee_idx = select_random_employed_bee_pdf(state, fitness_pdf, num_employed_bees);
@@ -250,11 +263,20 @@ __device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_
 		}
 		*fitness = mutant_fitness;
 	}
+	else if(*patience > max_patience){
+		bee_status_array[id] = scout;
+		*patience = 0;
+	}
+	else{
+		*patience += 1;
+	}
 	return;
 }
 
-__device__ void scout_bee_handler(curandState *state, float *sol, int dim, float min, float max){
+__device__ void scout_bee_handler(curandState *state, float *sol, bee_status_t *bee_status, float *fitness, int dim, float min, float max){
 	random_float_array(state, sol, dim, min, max);	
+	compute_fitness(fitness, sol, dim);
+	*bee_status = onlooker;
 	return;
 }
 
@@ -286,9 +308,10 @@ __global__ void abc_algo(abc_info_t container){
 
 	//Defining variables
 	int id = threadIdx.x + blockDim.x*blockIdx.x;
-	int __shared__ best_id;
-	float __shared__ best_fitness;
+	__shared__ int best_id;
+	__shared__ float best_fitness;
 	__shared__ bee_status_t bee_status_array[STATIC_SHARED];
+	int patience = 0;
 
 	//Initialization step
 	#if DEBUG
@@ -312,7 +335,6 @@ __global__ void abc_algo(abc_info_t container){
 	int num_employed_bees = initialize_bee_status(&container.state[id], bee_status_array, id);
 
 	//Compute fitness
-	//Function subject to change	
 	compute_fitness(&container.fitness_array[id], &container.sol_array[id*container.sol_dim], container.sol_dim);
 	#if SUM_PROB
 	__shared__ float sum_fitness;
@@ -332,7 +354,7 @@ __global__ void abc_algo(abc_info_t container){
 
 	for(int i = 0; i < container.num_iterations; i++){
 		if(bee_status_array[id] == employed){	
-			employed_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id]);
+			employed_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], &patience, container.max_patience);
 			#if SUM_PROB			
 			//Compute sum of the fitnesses
 			sum_fitness_employed_bees(&sum_fitness, container.fitness_array[id]);
@@ -355,10 +377,10 @@ __global__ void abc_algo(abc_info_t container){
 		}
 
 		if(bee_status_array[id] == onlooker){
-			onlooker_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], prob_fitness);
+			onlooker_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], prob_fitness, &patience, container.max_patience);
 		}
 		else{
-			scout_bee_handler(&container.state[id], &container.sol_array[id*container.sol_dim], container.sol_dim, container.min, container.max);
+			scout_bee_handler(&container.state[id], &container.sol_array[id*container.sol_dim], &bee_status_array[id], &container.fitness_array[id], container.sol_dim, container.min, container.max);
 		}
 
 		#if DEBUG
@@ -373,13 +395,18 @@ __global__ void abc_algo(abc_info_t container){
 		}
 		#endif
 
-		best_fitness_naive(container.fitness_array, blockDim.x, id, &best_id, &best_fitness);
-
-		#if DEBUG
-		if(id == 0){
-			printf("Best ID: %d\nBest Fitness: %f\n", best_id, best_fitness);
+		if(best_fitness_naive(container.fitness_array, blockDim.x, id, &best_id, &best_fitness)){
+			if(id < container.sol_dim){
+				container.best_sol_fitness[id] = container.sol_array[best_id*container.sol_dim + id]; 
+			}
+			if(id == 0){
+				container.best_sol_fitness[container.sol_dim] = best_fitness;
+				#if DEBUG
+				printf("Best ID: %d\nBest Fitness: %f\n", best_id, best_fitness);
+				#endif
+			}
 		}
-		#endif
+
 	}
 
 	return;
