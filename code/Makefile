@@ -12,7 +12,7 @@ MAIN_OBJS := ${ANCILLARY_OBJS} main.o
 all: gpu
 
 gpu: ${MAIN_OBJS} | folder
-	${NVCC} ${INCLUDES} $^ -o ${DEST_FOLDER}/$@ -g
+	${NVCC} -g -G -keep ${INCLUDES} $^ -o ${DEST_FOLDER}/$@
 
 folder:
 	mkdir -p ${DEST_FOLDER}
@@ -24,4 +24,4 @@ clean:
 	rm -rf ${DEST_FOLDER}
 
 %.o: %.cu
-	${NVCC} ${INCLUDES} -dc $< -o $@
+	${NVCC} -g -G -keep ${INCLUDES} -dc $< -o $@

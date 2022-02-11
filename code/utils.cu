@@ -41,9 +41,7 @@ __global__ void setup_kernel(curandState *state, int seed){
 }
 
 __device__ float get_random_float(curandState *state, float min, float max){
-	//Test pending
-	int id = threadIdx.x + blockIdx.x * blockDim.x;
-	float val = curand_uniform(&state[id]);
+	float val = curand_uniform(state);
 	val = min + val*(max-min);
 	return val;
 }

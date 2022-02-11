@@ -1,6 +1,15 @@
 #ifndef _H_ABC
 #define _H_ABC
 
+//enum
+
+typedef enum BEE_STATUS
+{
+	scout,
+	employed,
+	onlooker
+}bee_status_t;
+
 //Struct
 typedef struct abc_info_s{
         //Random state
@@ -15,6 +24,7 @@ typedef struct abc_info_s{
         int sol_dim;
         float min;
         float max;
+	int num_iterations;
 }abc_info_t;
 
 //Device kernels

@@ -18,6 +18,7 @@
 #define MIN_FLOAT -3.0
 #define MAX_FLOAT 3.0
 #define DIM 2
+#define MAX_ITERATIONS 128
 //Each thread behaves like a bee
 
 //Bee state array
@@ -38,7 +39,7 @@ int main(void){
 	checkCudaErrors(cudaMalloc(&d_best_sol_fitness, sizeof(float)*(DIM+1)));
 
 	//Struct that contains all the relevant addresses and information
-	abc_info_t container = { d_state, d_solutions, d_best_sol_fitness, d_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT };
+	abc_info_t container = { d_state, d_solutions, d_best_sol_fitness, d_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT, MAX_ITERATIONS};
 	//Kernel execution
 	abc_algo<<<BLOCKS,THREADS>>>(container);
 	
