@@ -8,7 +8,7 @@ DEST_FOLDER := ./bin
 ANCILLARY_OBJS := benchfuns.o utils.o abc.o
 TEST_OBJS := ${ANCILLARY_OBJS} unittest.o
 MAIN_OBJS := ${ANCILLARY_OBJS} main.o
-DELETE_FILES := *.cudafe1.* *.fatbin.* *.reg.* *.module_id *.ii *.ptx *.cubin *.o
+DELETE_FILES := *.cudafe1.* *.fatbin.* *.reg.* *.module_id *.ii *.ptx *.cubin *.o *.fatbin
 
 all: gpu
 

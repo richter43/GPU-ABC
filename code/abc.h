@@ -1,8 +1,12 @@
 #ifndef _H_ABC
 #define _H_ABC
 
-//enum
+#define RASTRIGIN 1
+#define SPHERE 2
+#define FUNCTION SPHERE
+#define FLIP_FUNCTION 1
 
+//enum
 typedef enum BEE_STATUS
 {
 	scout,

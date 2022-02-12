@@ -5,14 +5,15 @@
 #include <helper_cuda.h>
 #include <cuda.h>
 
+#include "main.h"
 #include "utils.h"
 #include "benchfuns.h"
 #include "abc.h"
 
-#define DEBUG 1
 #define SUM_PROB 1
 #define MAX_PROB 0
-#define STATIC_SHARED 128
+#define STATIC_SHARED THREADS
+#define MAX_DIM DIM
 
 __device__ float *find_employed_bee_sol(float *sol_array, bee_status_t *bee_status_array, int sol_dim, int bee_id, int thread_id){
 	int counter = 0;
@@ -211,8 +212,14 @@ __device__ int select_random_employed_bee_pdf(curandState *state, float *fitness
 
 __device__ void compute_fitness(float *result, float *input, int dim){
 	float tmp_result;
+	#if FUNCTION == RASTRIGIN
 	rastrigin_nd(&tmp_result, input, dim);
+	#elif FUNCTION == SPHERE
+	sphere_nd(&tmp_result, input, dim);
+	#endif
+	#if FLIP_FUNCTION
 	*result = 1/tmp_result;
+	#endif
 	return;
 }
 
@@ -221,7 +228,7 @@ __device__ void employed_bee_handler(curandState *state, float *sol, bee_status_
 	int employed_bee_idx = select_random_employed_bee(state, bee_status_array, num_employed_bees);
 	float *selected_employed_sol = find_employed_bee_sol(sol, bee_status_array, dim, employed_bee_idx, id);
 
-	float mutant[STATIC_SHARED];
+	float mutant[MAX_DIM];
 	mutate_solution(state, mutant, &sol[id*dim], selected_employed_sol, dim);
 	//Compute utant fitness
 	float mutant_fitness;
@@ -232,6 +239,7 @@ __device__ void employed_bee_handler(curandState *state, float *sol, bee_status_
 			sol[id*dim + i] = mutant[i];
 		}
 		*fitness = mutant_fitness;
+		*patience = 0;
 	}
 	else if(*patience > max_patience){
                 bee_status_array[id] = scout;
@@ -251,7 +259,7 @@ __device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_
 	//Get mutation
 	float *selected_employed_sol = find_employed_bee_sol(sol, bee_status_array, dim, employed_bee_idx, id);
 
-	float mutant[STATIC_SHARED];
+	float mutant[MAX_DIM];
 	mutate_solution(state, mutant, &sol[id*dim], selected_employed_sol, dim);
 	//Compute mutant fitness
 	float mutant_fitness;
@@ -262,6 +270,7 @@ __device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_
 			sol[id*dim + i] = mutant[i];
 		}
 		*fitness = mutant_fitness;
+		*patience = 0;
 	}
 	else if(*patience > max_patience){
 		bee_status_array[id] = scout;
@@ -355,6 +364,7 @@ __global__ void abc_algo(abc_info_t container){
 	for(int i = 0; i < container.num_iterations; i++){
 		if(bee_status_array[id] == employed){	
 			employed_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], &patience, container.max_patience);
+			__syncthreads();
 			#if SUM_PROB			
 			//Compute sum of the fitnesses
 			sum_fitness_employed_bees(&sum_fitness, container.fitness_array[id]);
@@ -376,6 +386,7 @@ __global__ void abc_algo(abc_info_t container){
 			adapt_fitness_array(prob_fitness, num_employed_bees, bee_status_array);
 		}
 
+		__syncthreads();
 		if(bee_status_array[id] == onlooker){
 			onlooker_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], prob_fitness, &patience, container.max_patience);
 		}
@@ -395,6 +406,8 @@ __global__ void abc_algo(abc_info_t container){
 		}
 		#endif
 
+		__syncthreads();
+
 		if(best_fitness_naive(container.fitness_array, blockDim.x, id, &best_id, &best_fitness)){
 			if(id < container.sol_dim){
 				container.best_sol_fitness[id] = container.sol_array[best_id*container.sol_dim + id]; 
@@ -408,6 +421,12 @@ __global__ void abc_algo(abc_info_t container){
 		}
 
 	}
+	
+//	if(gridDim.x > 1 && id == 0){
+//		for(int i = 0; i < gridDim.x*blockDim.x; i+=blockDim.x){
+//			
+//		}
+//	}
 
 	return;
 }

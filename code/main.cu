@@ -4,23 +4,10 @@
 #include <helper_cuda.h>
 #include <curand_kernel.h>
 
+#include "main.h"
 #include "abc.h"
 #include "benchfuns.h"
 #include "utils.h"
-
-#define DEBUG 1
-
-//This is temporary, after implementation it can be defined dynamically.
-#define BLOCKS 1
-#define THREADS 32
-//Temporary problem dependent variables
-#define SEED 0 //TODO: Set to zero when debugging
-#define MIN_FLOAT -3.0
-#define MAX_FLOAT 3.0
-#define DIM 2
-#define MAX_ITERATIONS 128
-#define MAX_PATIENCE 3
-//Each thread behaves like a bee
 
 //Bee state array
 
@@ -41,6 +28,7 @@ int main(void){
 
 	//Struct that contains all the relevant addresses and information
 	abc_info_t container = { d_state, d_solutions, d_best_sol_fitness, d_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT, MAX_ITERATIONS, MAX_PATIENCE};
+	cudaDeviceSynchronize();
 	//Kernel execution
 	abc_algo<<<BLOCKS,THREADS>>>(container);
 	
