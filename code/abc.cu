@@ -11,9 +11,19 @@
 #include "abc.h"
 
 #define SUM_PROB 1
-#define MAX_PROB 0
+#define MAX_PROB 2
 #define STATIC_SHARED THREADS
 #define MAX_DIM DIM
+#define PROB_TYPE SUM_PROB
+
+#if TEST_CONSTANT
+__constant__ abc_info_t container;
+
+void copy_container_symbol(abc_info_t *src){
+	cudaMemcpyToSymbol(container, src, sizeof(abc_info_t), 0, cudaMemcpyHostToDevice);
+	return;
+}
+#endif
 
 __device__ float *find_employed_bee_sol(float *sol_array, bee_status_t *bee_status_array, int sol_dim, int bee_id, int thread_id){
 	int counter = 0;
@@ -56,7 +66,6 @@ __device__ void mutate_solution(curandState *state, float *mutant, float *origin
 		printf("Mutation:%f Orig:%f Employed:%f Random float:%f\n", mutant[i], original[i], employed_sol[i], random_float);
 		#endif
 	}
-
 
 	//Compute fitness and compare
 	return;
@@ -216,6 +225,8 @@ __device__ void compute_fitness(float *result, float *input, int dim){
 	rastrigin_nd(&tmp_result, input, dim);
 	#elif FUNCTION == SPHERE
 	sphere_nd(&tmp_result, input, dim);
+	#elif FUNCTION == ROSENBROCK
+	rosenbrock_nd(&tmp_result, input, dim);
 	#endif
 	#if FLIP_FUNCTION
 	*result = 1/tmp_result;
@@ -311,7 +322,11 @@ __device__ void adapt_fitness_array(float *prob_fitness, int num_employed_bees, 
 	return;
 }
 
+#if TEST_CONSTANT
+__global__ void abc_algo(void){
+#else
 __global__ void abc_algo(abc_info_t container){
+#endif
 	//The kernel could also use shared memory for storing the fitness
 	//Shared mem size = dim (Storing) + dim (temp sum_fitness)
 
@@ -345,9 +360,9 @@ __global__ void abc_algo(abc_info_t container){
 
 	//Compute fitness
 	compute_fitness(&container.fitness_array[id], &container.sol_array[id*container.sol_dim], container.sol_dim);
-	#if SUM_PROB
+	#if PROB_TYPE == SUM_PROB
 	__shared__ float sum_fitness;
-	#elif MAX_PROB
+	#elif PROB_TYPE == MAX_PROB
 	__shared__ float max_fitness;
 	#endif
 	__shared__ float prob_fitness[STATIC_SHARED];
@@ -364,8 +379,7 @@ __global__ void abc_algo(abc_info_t container){
 	for(int i = 0; i < container.num_iterations; i++){
 		if(bee_status_array[id] == employed){	
 			employed_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], &patience, container.max_patience);
-			__syncthreads();
-			#if SUM_PROB			
+			#if PROB_TYPE == SUM_PROB			
 			//Compute sum of the fitnesses
 			sum_fitness_employed_bees(&sum_fitness, container.fitness_array[id]);
 			#if DEBUG
@@ -373,7 +387,7 @@ __global__ void abc_algo(abc_info_t container){
 			#endif
 			//Compute probability density
 			prob_fitness[id] = container.fitness_array[id]/sum_fitness;
-			#elif MAX_PROB
+			#elif PROB_TYPE == MAX_PROB
 			
 			max_fitness_employed_bees(&max_fitness, container.fitness_array, blockDim.x, bee_status_array);
 			prob_fitness[id] = 0.9*container.fitness_array[id]/max_fitness + 0.1;
@@ -422,11 +436,5 @@ __global__ void abc_algo(abc_info_t container){
 
 	}
 	
-//	if(gridDim.x > 1 && id == 0){
-//		for(int i = 0; i < gridDim.x*blockDim.x; i+=blockDim.x){
-//			
-//		}
-//	}
-
 	return;
 }

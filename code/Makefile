@@ -10,10 +10,16 @@ TEST_OBJS := ${ANCILLARY_OBJS} unittest.o
 MAIN_OBJS := ${ANCILLARY_OBJS} main.o
 DELETE_FILES := *.cudafe1.* *.fatbin.* *.reg.* *.module_id *.ii *.ptx *.cubin *.o *.fatbin
 
+ifeq (${DEBUG}, true)
+	DEBUG_OPTIONS := -g -G -keep
+else
+	DEBUG_OPTIONS :=
+endif
+
 all: gpu
 
 gpu: ${MAIN_OBJS} | folder
-	${NVCC} -g -G -keep ${INCLUDES} $^ -o ${DEST_FOLDER}/$@
+	${NVCC} ${DEBUG_OPTIONS} ${INCLUDES} $^ -o ${DEST_FOLDER}/$@
 
 folder:
 	mkdir -p ${DEST_FOLDER}
@@ -26,4 +32,4 @@ clean:
 	rm ${DELETE_FILES}
 
 %.o: %.cu
-	${NVCC} -g -G -keep ${INCLUDES} -dc $< -o $@
+	${NVCC} ${DEBUG_OPTIONS} ${INCLUDES} -dc $< -o $@

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-BIN_PATH="/home/seivarden/Labs/Lab02/Ex01/bin"
-LOG_PATH="/home/seivarden/Labs/Lab02/Ex01/logs"
+BIN_PATH="../bin"
+LOG_PATH="./events"
 
-if [ $# -ne 1 ]
+if [ $# -ne 2 ]
 then
-        echo "Missing program name"
+        echo "Missing program or log name"
         exit -1
 fi
 
@@ -13,4 +13,4 @@ sudo -E env "PATH=$PATH" nvprof --events all \
         --log-file "${LOG_PATH}/events.log" \
         "${BIN_PATH}/$1"
 
-cat "${LOG_PATH}/events.log" | egrep -i "(warps_launched|not_predicated|sm_cta)"
+cat "${LOG_PATH}/$2.log" | egrep -i "(warps_launched|not_predicated|sm_cta)"

@@ -1,6 +1,17 @@
 #include "benchfuns.h"
 
 #define AMPLITUDE_RASTRIGIN 10.0
+#define ROSENBROCK_MULTIPLIER 100.0
+
+__host__ __device__ void rosenbrock_nd(float *ret, float *x, int n){
+
+	float sum = 0.0;
+	for(int i = 0; i < n-1; i++){
+		sum += powf(1.0 - x[i], 2.0) + ROSENBROCK_MULTIPLIER * powf(x[i+1] - powf(x[i], 2.0), 2.0);
+	}
+	*ret = sum;
+	return;
+}
 
 __host__ __device__ void sphere_nd(float *ret, float *x, int n){
 	float sum = 0;

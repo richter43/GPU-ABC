@@ -27,10 +27,16 @@ int main(void){
 	checkCudaErrors(cudaMalloc(&d_best_sol_fitness, sizeof(float)*(DIM+1)));
 
 	//Struct that contains all the relevant addresses and information
-	abc_info_t container = { d_state, d_solutions, d_best_sol_fitness, d_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT, MAX_ITERATIONS, MAX_PATIENCE};
-	cudaDeviceSynchronize();
+	abc_info_t h_container = { d_state, d_solutions, d_best_sol_fitness, d_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT, MAX_ITERATIONS, MAX_PATIENCE};
 	//Kernel execution
-	abc_algo<<<BLOCKS,THREADS>>>(container);
+	#if TEST_CONSTANT
+	copy_container_symbol(&h_container);
+	abc_algo<<<BLOCKS,THREADS>>>();
+	#else
+	abc_algo<<<BLOCKS,THREADS>>>(h_container);
+	#endif
+
+	checkCudaErrors(cudaDeviceSynchronize());
 	
 	checkCudaErrors(cudaMemcpy(h_best_sol_fitness, d_best_sol_fitness, sizeof(float)*(DIM+1), cudaMemcpyDeviceToHost));
 

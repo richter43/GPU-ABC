@@ -3,7 +3,8 @@
 
 #define RASTRIGIN 1
 #define SPHERE 2
-#define FUNCTION SPHERE
+#define ROSENBROCK 3
+#define FUNCTION ROSENBROCK
 #define FLIP_FUNCTION 1
 
 //enum
@@ -32,12 +33,21 @@ typedef struct abc_info_s{
 	int max_patience;
 }abc_info_t;
 
+//Utility function
+#if TEST_CONSTANT
+extern void copy_container_symbol(abc_info_t *src);
+#endif
+
 //Device kernels
 extern __device__ void scout_bee(curandState *state, float *sol, int dim, float min, float max);
 extern __device__ void initialize_sol_array(curandState *state, float *sol, int sol_dim, float min, float max);
 extern __device__ void print_float_sol(float *array, int size);
 extern __device__ float sum_fitness_naive(float *fitness_array, int size, int id);
 //Global kernels
+#if TEST_CONSTANT
+extern __global__ void abc_algo(void);
+#else
 extern __global__ void abc_algo(abc_info_t container);
+#endif
 
 #endif
