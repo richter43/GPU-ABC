@@ -234,7 +234,7 @@ __device__ void compute_fitness(float *result, float *input, int dim){
 	return;
 }
 
-__device__ void employed_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, int *patience, int max_patience){
+__device__ void employed_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, int *patience, int max_patience, float *mutant_fitness){
 	//Selecting a random employed_bee
 	int employed_bee_idx = select_random_employed_bee(state, bee_status_array, num_employed_bees);
 	float *selected_employed_sol = find_employed_bee_sol(sol, bee_status_array, dim, employed_bee_idx, id);
@@ -242,14 +242,13 @@ __device__ void employed_bee_handler(curandState *state, float *sol, bee_status_
 	float mutant[MAX_DIM];
 	mutate_solution(state, mutant, &sol[id*dim], selected_employed_sol, dim);
 	//Compute utant fitness
-	float mutant_fitness;
-	compute_fitness(&mutant_fitness, mutant, dim);
+	compute_fitness(&mutant_fitness[id], mutant, dim);
 
-	if(optim_maximizer(*fitness, mutant_fitness)){
+	if(optim_maximizer(*fitness, mutant_fitness[id])){
 		for(int i = 0; i < dim; i++){
 			sol[id*dim + i] = mutant[i];
 		}
-		*fitness = mutant_fitness;
+		*fitness = mutant_fitness[id];
 		*patience = 0;
 	}
 	else if(*patience > max_patience){
@@ -263,7 +262,7 @@ __device__ void employed_bee_handler(curandState *state, float *sol, bee_status_
 
 }
 
-__device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, float *fitness_pdf, int *patience, int max_patience){
+__device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, float *fitness_pdf, int *patience, int max_patience, float *mutant_fitness){
 	
 	//Selecting an employed bee according to its fitness
 	int employed_bee_idx = select_random_employed_bee_pdf(state, fitness_pdf, num_employed_bees);
@@ -271,25 +270,24 @@ __device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_
 	float *selected_employed_sol = find_employed_bee_sol(sol, bee_status_array, dim, employed_bee_idx, id);
 
 	float mutant[MAX_DIM];
-	mutate_solution(state, mutant, &sol[id*dim], selected_employed_sol, dim);
-	//Compute mutant fitness
-	float mutant_fitness;
-	compute_fitness(&mutant_fitness, mutant, dim);
-	
-	if(optim_maximizer(*fitness, mutant_fitness)){
-		for(int i = 0; i < dim; i++){
-			sol[id*dim + i] = mutant[i];
-		}
-		*fitness = mutant_fitness;
+        mutate_solution(state, mutant, &sol[id*dim], selected_employed_sol, dim);
+        //Compute utant fitness
+        compute_fitness(&mutant_fitness[id], mutant, dim);
+ 
+        if(optim_maximizer(*fitness, mutant_fitness[id])){
+                for(int i = 0; i < dim; i++){
+                        sol[id*dim + i] = mutant[i];
+                }
+                *fitness = mutant_fitness[id];                
 		*patience = 0;
-	}
-	else if(*patience > max_patience){
-		bee_status_array[id] = scout;
-		*patience = 0;
-	}
-	else{
-		*patience += 1;
-	}
+        }
+        else if(*patience > max_patience){
+                bee_status_array[id] = scout;
+                *patience = 0;
+        }      
+        else{
+                *patience += 1;
+        }
 	return;
 }
 
@@ -335,7 +333,12 @@ __global__ void abc_algo(abc_info_t container){
 	__shared__ int best_id;
 	__shared__ float best_fitness;
 	__shared__ bee_status_t bee_status_array[STATIC_SHARED];
-	int patience = 0;
+	#if SHARED_ARRAY
+	__shared__ float fitness[STATIC_SHARED];
+	#endif
+	__shared__ float scrap_array[STATIC_SHARED];
+
+	int patience = 0; //Can't get data about it using nvprof
 
 	//Initialization step
 	#if DEBUG
@@ -378,7 +381,7 @@ __global__ void abc_algo(abc_info_t container){
 
 	for(int i = 0; i < container.num_iterations; i++){
 		if(bee_status_array[id] == employed){	
-			employed_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], &patience, container.max_patience);
+			employed_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], &patience, container.max_patience, scrap_array);
 			#if PROB_TYPE == SUM_PROB			
 			//Compute sum of the fitnesses
 			sum_fitness_employed_bees(&sum_fitness, container.fitness_array[id]);
@@ -402,7 +405,7 @@ __global__ void abc_algo(abc_info_t container){
 
 		__syncthreads();
 		if(bee_status_array[id] == onlooker){
-			onlooker_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], prob_fitness, &patience, container.max_patience);
+			onlooker_bee_handler(&container.state[id], container.sol_array, bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, id, &container.fitness_array[id], prob_fitness, &patience, container.max_patience, scrap_array);
 		}
 		else{
 			scout_bee_handler(&container.state[id], &container.sol_array[id*container.sol_dim], &bee_status_array[id], &container.fitness_array[id], container.sol_dim, container.min, container.max);

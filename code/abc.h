@@ -6,6 +6,7 @@
 #define ROSENBROCK 3
 #define FUNCTION ROSENBROCK
 #define FLIP_FUNCTION 1
+#define SHARED_FITNESS 0
 
 //enum
 typedef enum BEE_STATUS
