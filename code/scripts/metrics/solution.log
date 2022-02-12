@@ -1,0 +1,19 @@
+Invocations                               Metric Name                                                    Metric Description         Min         Max         Avg
+Device "NVIDIA Tegra X1 (0)"
+    Kernel: abc_algo(void)
+          1                                       ipc                                                          Executed IPC    0.546676    0.546676    0.546676
+          1                             inst_per_warp                                                 Instructions per warp  6.8087e+05  6.8087e+05  6.8087e+05
+          1                             flop_count_sp                           Floating Point Operations(Single Precision)    14002236    14002236    14002236
+          1                         shared_efficiency                                              Shared Memory Efficiency       4.04%       4.04%       4.04%
+          1                        shared_utilization                                             Shared Memory Utilization     Low (1)     Low (1)     Low (1)
+          1                              inst_integer                                                  Integer Instructions    64422749    64422749    64422749
+          1                              inst_control                                             Control-Flow Instructions    32112148    32112148    32112148
+          1                        inst_compute_ld_st                                               Load/Store Instructions    16206962    16206962    16206962
+          1                                       ipc                                                          Executed IPC    0.659045    0.659045    0.659045
+          1                             inst_per_warp                                                 Instructions per warp  1.9044e+04  1.9044e+04  1.9044e+04
+          1                             flop_count_sp                           Floating Point Operations(Single Precision)           0           0           0
+          1                         shared_efficiency                                              Shared Memory Efficiency       0.00%       0.00%       0.00%
+          1                        shared_utilization                                             Shared Memory Utilization    Idle (0)    Idle (0)    Idle (0)
+          1                              inst_integer                                                  Integer Instructions      829423      829423      829423
+          1                              inst_control                                             Control-Flow Instructions        6658        6658        6658
+          1                        inst_compute_ld_st                                               Load/Store Instructions      616595      616595      616595

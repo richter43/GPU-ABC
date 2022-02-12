@@ -10,7 +10,7 @@ then
 fi
 
 sudo -E env "PATH=$PATH" nvprof --events all \
-        --log-file "${LOG_PATH}/events.log" \
+        --log-file "${LOG_PATH}/events-$2.log" \
         "${BIN_PATH}/$1"
 
-cat "${LOG_PATH}/$2.log" | egrep -i "(warps_launched|not_predicated|sm_cta)"
+cat "${LOG_PATH}/events-$2.log" | egrep -i "(warps_launched|not_predicated|sm_cta)"
