@@ -4,7 +4,7 @@
 #define RASTRIGIN 1
 #define SPHERE 2
 #define ROSENBROCK 3
-#define FUNCTION ROSENBROCK
+#define FUNCTION SPHERE
 #define FLIP_FUNCTION 1
 #define SHARED_FITNESS 0
 

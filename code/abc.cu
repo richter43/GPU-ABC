@@ -293,8 +293,14 @@ __device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_
 
 __device__ void scout_bee_handler(curandState *state, float *sol, bee_status_t *bee_status, float *fitness, int dim, float min, float max){
 	random_float_array(state, sol, dim, min, max);	
+	float old_fitness = *fitness;
 	compute_fitness(fitness, sol, dim);
-	*bee_status = onlooker;
+	if(optim_maximizer(old_fitness, *fitness)){
+		*bee_status = onlooker;
+	}
+	else{
+		*bee_status = employed;
+	}
 	return;
 }
 
