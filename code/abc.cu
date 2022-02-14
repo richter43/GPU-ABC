@@ -26,14 +26,16 @@ void copy_container_symbol(abc_info_t *src){
 #endif
 
 __device__ float *find_employed_bee_sol(float *sol_array, bee_status_t *bee_status_array, int sol_dim, int bee_id){
+	//Finds the relative position of the selected bee's index
+
 	int counter = 0;
 	float *tmp_sol = sol_array;
 	for(int i = 0; i < blockDim.x; i++){
 		if(bee_status_array[i] == employed){
 			if(bee_id == counter){
 				if(i == threadIdx.x){
-					//Adding one to the requested bee id so that it searches for another employed bee, in the
-					//event it doesn't find any it will return the first employed bee
+					//Adding one to the requested bee id so that it searches for the next employed bee.
+					//In the event it doesn't find any it will return the first employed bee.
 					bee_id +=1;
 					continue;
 				}
@@ -57,7 +59,8 @@ __device__ float *find_employed_bee_sol(float *sol_array, bee_status_t *bee_stat
 }
 
 __device__ void mutate_solution(curandState *state, float *mutant, float *original, float *employed_sol, int size){
-	
+	//The original solution is mutated using a random value and an employed_sol array
+
 	float random_float;
 
 	for(int i = 0; i < size; i++){
@@ -74,11 +77,14 @@ __device__ void mutate_solution(curandState *state, float *mutant, float *origin
 }
 
 __device__ void initialize_sol_array(curandState *state, float *sol, int sol_dim, float min, float max){
+	//Creates a random array and stores it into sol
 	random_float_array(state, sol, sol_dim, min, max);
 	return;
 }
 
 __device__ void print_float_sol(float *array, int size){
+	//Prints the float array size
+
 	for(int i = 0; i < size; i++){
 		printf("%f ", array[i]);
 	}
@@ -86,9 +92,7 @@ __device__ void print_float_sol(float *array, int size){
 }
 
 __device__ float sum_fitness_naive(float *fitness_array, int size, int id){
-	//TODO: sums the array that contains all of the fitness in a parallel manner (Alternated, log(n))
-	//This should be per-block, thus, a maximum of MAX_THREADS bees are possible to spawn
-	//Dynamic shared memory could also be introduced
+	//Sum computed in log(N)
 
 	__shared__ float tmp_fitness[STATIC_SHARED];
 
@@ -105,7 +109,8 @@ __device__ float sum_fitness_naive(float *fitness_array, int size, int id){
 }
 
 __device__ void initialize_bee_status(curandState *state, bee_status_t *bee_status_array, int id, int *num_employed_bees){
-	
+	//Assigns task to a bee
+
 	float val = curand_uniform(state);
 	//Ratio is read from passed container
 	if(val < container.ratio_ote){
@@ -127,12 +132,14 @@ __device__ void initialize_bee_status(curandState *state, bee_status_t *bee_stat
 }
 
 __device__ void sum_fitness_employed_bees(float *sum, float fitness){
-	
+	//Adding atomically the current amount of employed bees
+
 	atomicAdd(sum, fitness);
 	return;
 }
 
 __device__ void max_fitness_employed_bees(float *max, float *fitness_array, int fitness_size,  bee_status_t *bee_status_array){
+	//Finding the maximum among the employed bees
 	
 	for(int i = 0; i < fitness_size; i++){
 		if(bee_status_array[i] == employed && *max < fitness_array[i]){
@@ -143,6 +150,7 @@ __device__ void max_fitness_employed_bees(float *max, float *fitness_array, int 
 }
 
 __device__ bool optim_minimizer(float left, float right){
+	//Minimizer function
 
 	if(left > right){
 		return true; 
@@ -151,6 +159,7 @@ __device__ bool optim_minimizer(float left, float right){
 }
 
 __device__ bool optim_maximizer(float left, float right){
+	//Maximizer function
 
 	if(left < right){
 		return true; 
@@ -159,6 +168,8 @@ __device__ bool optim_maximizer(float left, float right){
 }
 
 __device__ bool best_fitness_naive(float *fitness_array, int size, int id, int *best_id, float *best_fitness){
+	//Find which is the best solution in a parallel manner
+
 	__shared__ int tmp_best_index[STATIC_SHARED];
 	__shared__ float tmp_fitness[STATIC_SHARED];
 	__shared__ bool tmp_return;
@@ -190,9 +201,9 @@ __device__ bool best_fitness_naive(float *fitness_array, int size, int id, int *
 	return tmp_return;
 }
 
-//Diff pdf -> add all pdfs until > random value then that's the idx :)
-
 __device__ int select_random_employed_bee(curandState *state, bee_status_t *bee_status_array, int num_employed_bees){
+	//Selects a local index of a random employed bee
+
 	int employed_bee_idx = curand(state)%num_employed_bees;
 	if(employed_bee_idx < 0){
 		//Remainder could be negative due to unsigned int
@@ -205,7 +216,8 @@ __device__ int select_random_employed_bee(curandState *state, bee_status_t *bee_
 }
 
 __device__ int select_random_employed_bee_pdf(curandState *state, float *fitness_pdf, int num_employed_bees){
-	
+	//Selects a random employed bee according to their probability density function
+
 	float tmp_rand = curand_uniform(state);
 	float tmp_sum = 0.0;
 	int counter;
@@ -225,6 +237,8 @@ __device__ int select_random_employed_bee_pdf(curandState *state, float *fitness
 }
 
 __device__ void compute_fitness(float *result, float *input, int dim){
+	//Self-explanatory, defined at compilation time
+
 	float tmp_result;
 	#if FUNCTION == RASTRIGIN
 	rastrigin_nd(&tmp_result, input, dim);
@@ -240,6 +254,8 @@ __device__ void compute_fitness(float *result, float *input, int dim){
 }
 
 __device__ void employed_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, int *patience, int max_patience, float *mutant_fitness){
+	//Executes the behaviour of an employed bee
+
 	//Selecting a random employed_bee
 	int employed_bee_idx = select_random_employed_bee(state, bee_status_array, num_employed_bees);
 	float *selected_employed_sol = find_employed_bee_sol(sol, bee_status_array, dim, employed_bee_idx);
@@ -268,7 +284,8 @@ __device__ void employed_bee_handler(curandState *state, float *sol, bee_status_
 }
 
 __device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_t *bee_status_array, int dim, float min, float max, int num_employed_bees, int id, float *fitness, float *fitness_pdf, int *patience, int max_patience, float *mutant_fitness){
-	
+	//Executes the behaviour of an onlooker bee
+
 	//Selecting an employed bee according to its fitness
 	int employed_bee_idx = select_random_employed_bee_pdf(state, fitness_pdf, num_employed_bees);
 	//Get mutation
@@ -297,6 +314,8 @@ __device__ void onlooker_bee_handler(curandState *state, float *sol, bee_status_
 }
 
 __device__ void scout_bee_handler(curandState *state, float *sol, bee_status_t *bee_status, float *fitness, int dim, float min, float max){
+	//Executes the behaviour of a scout bee
+
 	random_float_array(state, sol, dim, min, max);	
 	float old_fitness = *fitness;
 	compute_fitness(fitness, sol, dim);
@@ -310,6 +329,7 @@ __device__ void scout_bee_handler(curandState *state, float *sol, bee_status_t *
 }
 
 __device__ void adapt_fitness_array(float *prob_fitness, int num_employed_bees, bee_status_t *bee_status_array){
+	//Put every computed fitness/pdf together
 
 	int counter = 0;
 
@@ -435,6 +455,7 @@ __global__ void abc_algo(abc_info_t container){
 
 		__syncthreads();
 
+		//Find best fitness and stores its solution in global memory
 		if(best_fitness_naive(container.fitness_array, blockDim.x, id, &best_id, &best_fitness)){
 			if(threadIdx.x < container.sol_dim){
 				container.best_sol_fitness[threadIdx.x + (container.sol_dim + 1)*blockIdx.x] = container.sol_array[best_id*container.sol_dim + threadIdx.x]; 
