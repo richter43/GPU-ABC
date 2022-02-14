@@ -32,6 +32,7 @@ typedef struct abc_info_s{
         float max;
 	int num_iterations;
 	int max_patience;
+	float ratio_ote;
 }abc_info_t;
 
 //Utility function
