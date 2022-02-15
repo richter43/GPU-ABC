@@ -9,6 +9,9 @@
 #include "benchfuns.h"
 #include "utils.h"
 
+#define STORE_RESULTS 1
+#define FILENAME "./values.csv"
+
 //Bee state array
 
 int main(int argc, char *argv[]){
@@ -56,11 +59,23 @@ int main(int argc, char *argv[]){
 	abc_algo<<<BLOCKS,THREADS>>>(h_container);
 	#endif
 
-	checkCudaErrors(cudaDeviceSynchronize());
-	
+	checkCudaErrors(cudaDeviceSynchronize());	
 	checkCudaErrors(cudaMemcpy(h_best_sol_fitness, d_best_sol_fitness, sizeof(float)*BLOCKS*(DIM+1), cudaMemcpyDeviceToHost));
 
+	//This is done for the sake of initializing the memory array to zero.
 	float *tmp_sol = (float*) calloc(DIM,sizeof(float));
+	float fitness_tmp_sum = 0.0;
+	float max_tmp = 0.0;
+
+	#if STORE_RESULTS
+	FILE *fp = fopen(FILENAME, "a");
+	if(fp == NULL){
+		fprintf(stderr, "Could not create/open csv file.\n");
+		exit(EXIT_FAILURE);
+	}
+	fprintf(fp, "hive,x,y,fitness\n");
+	#endif
+
 	if(tmp_sol == NULL){
 		fprintf(stderr, "Could not allocate memory\n");
 		exit(EXIT_FAILURE);
@@ -69,19 +84,42 @@ int main(int argc, char *argv[]){
 	//Printing solutions
 	for(int i = 0; i < BLOCKS; i++){
 		printf("Hive %d solution: ", i);
+		#if STORE_RESULTS
+		fprintf(fp, "%d,", i);
+		#endif
 		for(int j = 0; j < DIM; j++){
-			tmp_sol[j] += h_best_sol_fitness[j + (DIM+1)*i]; 
+			tmp_sol[j] += h_best_sol_fitness[j + (DIM+1)*i]; //Adding all of the solutions
 			printf("%f ", h_best_sol_fitness[j + (DIM+1)*i]);
+			#if STORE_RESULTS
+			fprintf(fp, "%f,", h_best_sol_fitness[j + (DIM+1)*i]);
+			#endif
+		}
+		
+		if(max_tmp < h_best_sol_fitness[DIM + (DIM+1)*i]){
+			max_tmp = h_best_sol_fitness[DIM + (DIM+1)*i];
 		}
 		printf("\nBest fitness: %f\n", h_best_sol_fitness[DIM + (DIM+1)*i]);
+		#if STORE_RESULTS
+		fprintf(fp, "%f\n", h_best_sol_fitness[DIM + (DIM+1)*i]);
+		#endif
+	}
+
+	//Using the maximum to map the fitnesses to a range between 0 and 1 in order to avoid a potential overflow
+	for(int i = 0; i < BLOCKS; i++){
+		fitness_tmp_sum += h_best_sol_fitness[DIM + (DIM+1)*i]/max_tmp;
+		h_best_sol_fitness[DIM + (DIM+1)*i] = h_best_sol_fitness[DIM + (DIM+1)*i]/max_tmp;
 	}
 
 	//Wisdom of crowds principle
-	printf("Wisdom of crowds solution: \n");
+	printf("Weighed wisdom of crowds solution: \n");
 	for(int i = 0; i < DIM; i++){
-		tmp_sol[i] = tmp_sol[i] / BLOCKS;
+		tmp_sol[i] = (tmp_sol[i] / BLOCKS)*(h_best_sol_fitness[DIM + (DIM + 1)*i]/fitness_tmp_sum);
 		printf("%f ", tmp_sol[i]);
 	}
+
+	#if STORE_RESULTS
+	fclose(fp);
+	#endif
 
 	free(h_best_sol_fitness);
 	cudaFree(d_solutions);	

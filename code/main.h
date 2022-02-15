@@ -5,14 +5,12 @@
 
 //This is temporary, after implementation it can be defined dynamically.
 #define BLOCKS 8
-#define THREADS 64
+#define THREADS 32
 //Temporary problem dependent variables
 #define SEED 0 //TODO: Set to zero when debugging
 #define MIN_FLOAT -3.0
 #define MAX_FLOAT 3.0
-#define DIM 1
-#define MAX_PATIENCE 3
-#define SHARED_ARRAYS 5
+#define DIM 2
 //Each thread behaves like a bee
 #define TEST_CONSTANT 1
 
