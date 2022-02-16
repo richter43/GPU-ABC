@@ -22,6 +22,8 @@ The compilation step creates a ./bin/gpu and is executed as follows:
 * Ratio of onlooker to employed bees: self-explanatory, must be contained in the interval [0.0, 1.0].
 * Maximum patience: amount of times the bee's solution is allowed to worsen before setting it to a scout bee.
 
+**NOTE**: The desired function to be optimized has to be defined in the compute_fitness() function inside of the abc.cu file.
+
 ### Compilation instructions
 
 **Compilation with debugging enabled**
@@ -49,11 +51,12 @@ make clean
 	* Utility functions.
 * benchfuns.cu
 	* Benchmark functions that are used for testing the ABC algorithm.
+	* Changing the benchmark function constitutes in modifying the `FUNCTION` directive  inside of `abc.h`.
 
 ### Unit tests
 
 * unittest.cu
-	* Tests many of the defined functions.
+	* Tests many of the defined functions/kernels.
 
 ### Main API functions
 

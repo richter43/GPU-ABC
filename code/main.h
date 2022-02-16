@@ -5,7 +5,7 @@
 
 //This is temporary, after implementation it can be defined dynamically.
 #define BLOCKS 8
-#define THREADS 32
+#define THREADS 128
 //Temporary problem dependent variables
 #define SEED 0 //TODO: Set to zero when debugging
 #define MIN_FLOAT -3.0

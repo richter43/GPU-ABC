@@ -4,7 +4,7 @@
 #define RASTRIGIN 1
 #define SPHERE 2
 #define ROSENBROCK 3
-#define FUNCTION SPHERE
+#define FUNCTION ROSENBROCK
 #define FLIP_FUNCTION 1
 #define SHARED_FITNESS 0
 
@@ -25,7 +25,9 @@ typedef struct abc_info_s{
         //Array that contains the best solution vector and its fitness
         float *best_sol_fitness;
         //Array that contains the fitness of each solution
+	#if !SHARED_FITNESS
         float *fitness_array;
+	#endif
         int array_size;
         int sol_dim;
         float min;

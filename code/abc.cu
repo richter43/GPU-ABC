@@ -93,6 +93,7 @@ __device__ void print_float_sol(float *array, int size){
 
 __device__ float sum_fitness_naive(float *fitness_array, int size, int id){
 	//Sum computed in log(N)
+	//Unused
 
 	__shared__ float tmp_fitness[STATIC_SHARED];
 
@@ -179,7 +180,12 @@ __device__ bool best_fitness_naive(float *fitness_array, int size, int id, int *
 	}
 
 	tmp_best_index[threadIdx.x] = id;
+
+	#if SHARED_FITNESS	
+	tmp_fitness[threadIdx.x] = fitness_array[threadIdx.x];
+	#else
 	tmp_fitness[threadIdx.x] = fitness_array[id];
+	#endif
 
 	__syncthreads();
 
@@ -356,14 +362,14 @@ __global__ void abc_algo(void){
 #else
 __global__ void abc_algo(abc_info_t container){
 #endif
-	//The kernel could also use shared memory for storing the fitness by setting SHARED_ARRAY to 1
+	//The kernel could also use shared memory for storing the fitness by setting SHARED_FITNESS to 1
 	//Defining variables
 	__shared__ int num_employed_bees;
 	int id = threadIdx.x + blockDim.x*blockIdx.x;
 	__shared__ int best_id;
 	__shared__ float best_fitness;
 	__shared__ bee_status_t bee_status_array[STATIC_SHARED];
-	#if SHARED_ARRAY
+	#if SHARED_FITNESS
 	__shared__ float fitness[STATIC_SHARED];
 	#endif
 	__shared__ float scrap_array[STATIC_SHARED];
@@ -392,7 +398,11 @@ __global__ void abc_algo(abc_info_t container){
 	initialize_bee_status(&container.state[id], bee_status_array, threadIdx.x, &num_employed_bees);
 
 	//Compute fitness
+	#if SHARED_FITNESS
+	compute_fitness(&fitness[threadIdx.x], &container.sol_array[id*container.sol_dim], container.sol_dim);
+	#else
 	compute_fitness(&container.fitness_array[id], &container.sol_array[id*container.sol_dim], container.sol_dim);
+	#endif
 	#if PROB_TYPE == SUM_PROB
 	__shared__ float sum_fitness;
 	#elif PROB_TYPE == MAX_PROB
@@ -410,21 +420,44 @@ __global__ void abc_algo(abc_info_t container){
 	#endif
 
 	for(int i = 0; i < container.num_iterations; i++){
+
+		__syncthreads();
+
 		if(bee_status_array[threadIdx.x] == employed){	
+			#if SHARED_FITNESS	
+			employed_bee_handler(&container.state[id], &container.sol_array[blockIdx.x*blockDim.x*container.sol_dim], bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, threadIdx.x, &fitness[threadIdx.x], &patience, container.max_patience, scrap_array);
+			#else
 			employed_bee_handler(&container.state[id], &container.sol_array[blockIdx.x*blockDim.x*container.sol_dim], bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, threadIdx.x, &container.fitness_array[id], &patience, container.max_patience, scrap_array);
+			#endif			
+
 			#if PROB_TYPE == SUM_PROB			
 			//Compute sum of the fitnesses
+			
+			#if SHARED_FITNESS	
+			sum_fitness_employed_bees(&sum_fitness, fitness[threadIdx.x]);
+			#else
 			sum_fitness_employed_bees(&sum_fitness, container.fitness_array[id]);
+			#endif			
 			#if DEBUG
 			printf("Sum fitness: %f\n", sum_fitness);
 			#endif
 			//Compute probability density
+
+			#if SHARED_FITNESS	
+			prob_fitness[threadIdx.x] = fitness[threadIdx.x]/sum_fitness;
+			#else
 			prob_fitness[threadIdx.x] = container.fitness_array[id]/sum_fitness;
+			#endif
 			#elif PROB_TYPE == MAX_PROB
 			
+
+			#if SHARED_FITNESS
+			max_fitness_employed_bees(&max_fitness, fitness[threadIdx.x], blockDim.x, bee_status_array);
+			prob_fitness[id] = 0.9*fitness[threadIdx.x]/max_fitness + 0.1;
+			#else
 			max_fitness_employed_bees(&max_fitness, container.fitness_array, blockDim.x, bee_status_array);
 			prob_fitness[id] = 0.9*container.fitness_array[id]/max_fitness + 0.1;
-			
+			#endif
 			#endif
 		}
 		__syncthreads();
@@ -435,10 +468,21 @@ __global__ void abc_algo(abc_info_t container){
 		__syncthreads();
 
 		if(bee_status_array[threadIdx.x] == onlooker){
+			#if SHARED_FITNESS
+			onlooker_bee_handler(&container.state[id], &container.sol_array[blockIdx.x*blockDim.x*container.sol_dim], bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, threadIdx.x, &fitness[threadIdx.x], prob_fitness, &patience, container.max_patience, scrap_array);
+			#else
 			onlooker_bee_handler(&container.state[id], &container.sol_array[blockIdx.x*blockDim.x*container.sol_dim], bee_status_array, container.sol_dim, container.min, container.max, num_employed_bees, threadIdx.x, &container.fitness_array[id], prob_fitness, &patience, container.max_patience, scrap_array);
+			#endif
 		}
-		else{
+
+		__syncthreads();
+
+		if(bee_status_array[threadIdx.x] == scout){
+			#if SHARED_FITNESS
+			scout_bee_handler(&container.state[id], &container.sol_array[id*container.sol_dim], &bee_status_array[threadIdx.x], &fitness[threadIdx.x], container.sol_dim, container.min, container.max);
+			#else
 			scout_bee_handler(&container.state[id], &container.sol_array[id*container.sol_dim], &bee_status_array[threadIdx.x], &container.fitness_array[id], container.sol_dim, container.min, container.max);
+			#endif
 		}
 
 		#if DEBUG
@@ -448,7 +492,11 @@ __global__ void abc_algo(abc_info_t container){
 			for(int i = 0; i < blockDim.x; i++){
 				printf("Thread %d -> Sol: ", i);
 				print_float_sol(&container.sol_array[i*container.sol_dim], container.sol_dim);
+				#if SHARED_FITNESS
 				printf("Fitness: %f\n", container.fitness_array[i]);
+				#else
+				printf("Fitness: %f\n", fitness[threadIdx.x]);
+				#endif
 			}
 		}
 		#endif
@@ -456,7 +504,11 @@ __global__ void abc_algo(abc_info_t container){
 		__syncthreads();
 
 		//Find best fitness and stores its solution in global memory
+		#if SHARED_FITNESS	
+		if(best_fitness_naive(fitness, blockDim.x, id, &best_id, &best_fitness)){
+		#else
 		if(best_fitness_naive(container.fitness_array, blockDim.x, id, &best_id, &best_fitness)){
+		#endif
 			if(threadIdx.x < container.sol_dim){
 				container.best_sol_fitness[threadIdx.x + (container.sol_dim + 1)*blockIdx.x] = container.sol_array[best_id*container.sol_dim + threadIdx.x]; 
 			}

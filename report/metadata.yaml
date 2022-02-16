@@ -13,9 +13,7 @@ numbersections: yes
 lang: en
 babel-lang: english
 abstract: |
-  This is the abstract.
-
-  It consists of two paragraphs.
-
+  Studies the implementation of the Artificial Bee Colony algorithm in a GPU,
+  various benchmark tests showing how well the algorithm performed.
 ...
 

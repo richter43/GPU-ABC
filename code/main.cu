@@ -44,13 +44,20 @@ int main(int argc, char *argv[]){
 	//Creation of a random state
 	curandState *d_state = create_random_state(BLOCKS, THREADS, SEED);
 	//Device memory allocation
-	float *d_solutions, *d_fitness, *d_best_sol_fitness;
+	float *d_solutions, *d_best_sol_fitness;
 	checkCudaErrors(cudaMalloc(&d_solutions, sizeof(float)*BLOCKS*THREADS*DIM));
+	#if !SHARED_FITNESS
+	float *d_fitness;
 	checkCudaErrors(cudaMalloc(&d_fitness, sizeof(float)*BLOCKS*THREADS));
+	#endif
 	checkCudaErrors(cudaMalloc(&d_best_sol_fitness, sizeof(float)*BLOCKS*(DIM+1)));
 
 	//Struct that contains all the relevant addresses and information
+	#if SHARED_FITNESS
+	abc_info_t h_container = { d_state, d_solutions, d_best_sol_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT, iterations, max_patience, ratio_ote};
+	#else
 	abc_info_t h_container = { d_state, d_solutions, d_best_sol_fitness, d_fitness, BLOCKS*THREADS*DIM, DIM, MIN_FLOAT, MAX_FLOAT, iterations, max_patience, ratio_ote};
+	#endif
 	//Kernel execution
 	#if TEST_CONSTANT
 	copy_container_symbol(&h_container);
@@ -88,7 +95,6 @@ int main(int argc, char *argv[]){
 		fprintf(fp, "%d,", i);
 		#endif
 		for(int j = 0; j < DIM; j++){
-			tmp_sol[j] += h_best_sol_fitness[j + (DIM+1)*i]; //Adding all of the solutions
 			printf("%f ", h_best_sol_fitness[j + (DIM+1)*i]);
 			#if STORE_RESULTS
 			fprintf(fp, "%f,", h_best_sol_fitness[j + (DIM+1)*i]);
@@ -112,9 +118,11 @@ int main(int argc, char *argv[]){
 
 	//Wisdom of crowds principle
 	printf("Weighed wisdom of crowds solution: \n");
-	for(int i = 0; i < DIM; i++){
-		tmp_sol[i] = (tmp_sol[i] / BLOCKS)*(h_best_sol_fitness[DIM + (DIM + 1)*i]/fitness_tmp_sum);
-		printf("%f ", tmp_sol[i]);
+	for(int j = 0; j < DIM; j++){
+		for(int i = 0; i < BLOCKS; i++){
+			tmp_sol[j] += h_best_sol_fitness[j + (DIM+1)*i]*(h_best_sol_fitness[DIM + (DIM + 1)*i]/fitness_tmp_sum);
+		}
+		printf("%f ", tmp_sol[j]);
 	}
 
 	#if STORE_RESULTS
@@ -124,7 +132,9 @@ int main(int argc, char *argv[]){
 	free(h_best_sol_fitness);
 	cudaFree(d_solutions);	
 	cudaFree(d_state);	
+	#if !SHARED_FITNESS
 	cudaFree(d_fitness);
+	#endif
 	cudaFree(d_best_sol_fitness);
 
 	return EXIT_SUCCESS;
