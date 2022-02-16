@@ -1,5 +1,4 @@
 #include "benchfuns.h"
-
 #define AMPLITUDE_RASTRIGIN 10.0
 #define ROSENBROCK_MULTIPLIER 100.0
 
@@ -33,6 +32,7 @@ __host__ __device__ void rastrigin_nd(float *ret, float *x, int n){
 	float sum = AMPLITUDE_RASTRIGIN * n;
 	for(int i = 0; i < n; i++){
 		sum += powf(x[i],2.0) - AMPLITUDE_RASTRIGIN*cospif(2.0*x[i]);	
+
 	}
 	*ret = sum;
 	return;

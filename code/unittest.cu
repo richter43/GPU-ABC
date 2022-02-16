@@ -29,6 +29,7 @@ __global__ void d_get_random_float(curandState *state);
 __global__ void d_random_float_array(curandState *state, float *ret, int dim);
 __global__ void d_sum_array_float(float *float_array, int dim);
 
+
 int main(void){
 	
 	//h_rastrigin1d_test(FLOAT_VAL);
@@ -162,7 +163,6 @@ __global__ void d_sum_array_float(float *float_array, int dim){
 	
 	return;
 }
-
 //Device kernels
 __global__ void rastrigin(float *ret, float x){
 	*ret = rastrigin_1d(x);
@@ -172,7 +172,6 @@ __global__ void rastrigin(float *ret, float x){
 __global__ void d_rastriginnd_test(float *ret, float *x, int n){
 	rastrigin_nd(ret, x, n);
 }
-
 
 __global__ void d_get_random_float(curandState *state){
 	float val = get_random_float(state, MIN_FLOAT, MAX_FLOAT);
