@@ -18,7 +18,8 @@ which simulates the way in which honey bees split their work for foraging and
 securing food.
 
 The novelty of this work is that of implementing the aforementioned algorithm
-in a GPU.
+in a GPU, the code of which can be found in 
+[`https://github.com/richter43/GPU-ABC`](https://github.com/richter43/GPU-ABC).
 
 # Background
 ## Artificial Bee Colony
