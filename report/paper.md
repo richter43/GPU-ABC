@@ -70,14 +70,14 @@ There's a constraint however, $i \neq k$ (Otherwise the position would not be up
 1. Initialize the bee's solutions.
 2. Compute every bee's fitness.
 3. The employed bee selects a random employed bee (With equal probability on 
-selecting any of them), computes a potential solution (As seen in [@eq:randomvar] 
+selecting any of them), computes a potential solution (As seen in [@eq:randomvar]) 
 and its fitness, and, if it performs better, the new solution is adopted.
 4. The onlooker bee selects a random employed bee (Giving preference to the 
 bees with the best fitnesses as seen in [@eq:probFitness]), computes a 
-potential solution (As seen in [@eq:randomvar] and its fitness, 
+potential solution (As seen in [@eq:randomvar]) and its fitness, 
 and, if it performs better, the new solution is adopted.
 5. In the event that a bee has not improved its solution for a given amount of
-cycles, the bee is turned into a scout bee, which sets its solution wiith random
+cycles, the bee is turned into a scout bee, which sets its solution with random
 values.
 6. Repeat from 3 until the cycles end.
 
@@ -91,7 +91,7 @@ following points:
 
 Knowing that every thread is a bee, they still have to be identified somehow, 
 the proposed solution is that of using an enumerator type and storing them 
-in a shared memory.
+in shared memory.
 
 ### Obtaining random numbers
 
@@ -123,7 +123,9 @@ It's the idea that aggregating the results from many independent sources
 will result in a consensus closer to the truth [@crowd-wisdom], 
 this is theorized to be due to the fact that independent actors 
 are susceptible to errors, and such error can be eliminated through the 
-correct aggregation of the multitude of data. 
+correct aggregation of the multitude of data. This idea only holds given
+that there's a large, mutually independent population from which to 
+obtain the results from.
 
 ## Code implementation
 
@@ -143,15 +145,15 @@ checks the return values of various CUDA standard API.
 After the hives return their final fitnesses they are aggregated 
 in the following way:
 
-$$ sol_{weighted_{i}} = \sum_{j=0}^{HN}(sol_{ij} \cdot \frac{fit_{j}}{fit_{best}}) $$ {#eq:finalFitness}
+$$ sol_{weighted_{i}} = \sum_{j=0}^{HN}(sol_{ij} \cdot \frac{fit_{j}}{fit_{total_{j}}}) $$ {#eq:finalFitness}
 
 Where HN is the number of hives that were instantiated.
 
 ### Managing potential overflow
 
-There exists a latent possibility for overflow to occur during the fi manaagement 
-
-The latent possibility of existing overflow due to managing fitnesses which are
+There exists a latent possibility for overflow to occur during the aggregation step of the fitnesses,
+for this reason, an overflow-aware algorithm was implemented in advance, which consists in maintaining
+the relative ratio information by dividing every fitness by the maximum value among them.
 
 # Methodology
 
@@ -261,6 +263,8 @@ The baseline implementation has the following parameters:
 
 # Discussion
 
+## Execution time
+
 The main factor that affects the amount of time the kernel is running is the
 amount of iterations, this effect can be seen in [@tbl:iterVStiming].
 
@@ -295,6 +299,20 @@ the reason for this is still unknown, considering that the shared memory
 is being accessed in a sequential mode, which entails that there will not
 be any bank conflict.
 
+# Conclusion
+
+Through the usage of GPUs lots of computations can be performed in parallel, 
+effectively accelerating the computational time. One of the potential 
+applications are relayed in this study.
+
+The Artificial Bee Colony algorithm is found to be a prime candidate for 
+exploiting the Single Instruction Multiple Data model due to the need of
+large amount of computations to be performed.
+
+# Future work
+
+It's recommended to study further optimizations on the algorithm's workflow.
+
 \newpage
 
 # Figures
@@ -322,20 +340,6 @@ be any bank conflict.
 ![Solutions of Rosenbrock function after 256 iterations](../images/rosenbrock_256_05_3.png){#fig:rosenbrockSol256}
 
 \newpage
-
-# Conclusion
-
-Through the usage of GPUs lots of computations can be performed in parallel, 
-effectively accelerating the computational time. One of the potential 
-applications are relayed in this study.
-
-The Artificial Bee Colony algorithm is found to be a prime candidate for 
-exploiting the Single Instruction Multiple Data model due to the need of
-large amount of computations to be performed.
-
-# Future work
-
-It's recommended to study further optimizations on the algorithm's workflow.
 
 # Further comments
 
