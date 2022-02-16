@@ -48,7 +48,7 @@ make clean
 * abc.cu
 	* API of the ABC algorithm.
 * utils.cu
-	* Utility functions.
+	* Utility functions (Such as memory allocation).
 * benchfuns.cu
 	* Benchmark functions that are used for testing the ABC algorithm.
 	* Changing the benchmark function constitutes in modifying the `FUNCTION` directive  inside of `abc.h`.
